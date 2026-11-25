@@ -18,6 +18,7 @@ class HeatPumpSCOPCard extends HTMLElement {
       cop_threshold_lower: config.cop_threshold_lower ?? 1.0,
       cop_threshold_upper: config.cop_threshold_upper ?? 6.0,
       energy_in_threshold: config.energy_in_threshold ?? 0.1,
+      trend_weighting: config.trend_weighting || 'none',
       color_periods: config.color_periods || null,
     };
   }
@@ -400,11 +401,11 @@ class HeatPumpSCOPCard extends HTMLElement {
         const A = Array(degree + 1).fill(0).map(() => Array(degree + 1).fill(0));
         const B = Array(degree + 1).fill(0);
 
-        for (const { x, y } of data) {
+        for (const { x, y, w = 1 } of data) {
             for (let i = 0; i <= degree; i++) {
-                B[i] += y * Math.pow(x, i);
+                B[i] += w * y * Math.pow(x, i);
                 for (let j = 0; j <= degree; j++) {
-                    A[i][j] += Math.pow(x, i + j);
+                    A[i][j] += w * Math.pow(x, i + j);
                 }
             }
         }
@@ -440,7 +441,8 @@ class HeatPumpSCOPCard extends HTMLElement {
         });
         const trendLineColor = lastPoint.color;
         
-        const regressionData = periodPoints.map(p => ({ x: p.outside_temp, y: p.scop }));
+        const weightByEnergy = this.config.trend_weighting === 'energy';
+        const regressionData = periodPoints.map(p => ({ x: p.outside_temp, y: p.scop, w: weightByEnergy ? p.energy_in : 1 }));
         const trend = polynomialRegression(regressionData, 2);
 
         return { name: periodName, trend, color: trendLineColor };
@@ -554,8 +556,10 @@ class HeatPumpSCOPCard extends HTMLElement {
     const periodStats = Object.keys(pointsByPeriod).map(periodName => {
         const periodPoints = pointsByPeriod[periodName];
         if (periodPoints.length === 0) return null;
-        const periodScops = periodPoints.map(p => p.scop);
-        const periodAvgScop = periodScops.reduce((sum, scop) => sum + scop, 0) / periodScops.length;
+        // Seasonal SCOP for the period: total heat out / total electricity in
+        const totalIn = periodPoints.reduce((sum, p) => sum + p.energy_in, 0);
+        const totalOut = periodPoints.reduce((sum, p) => sum + p.energy_out, 0);
+        const periodAvgScop = totalIn > 0 ? totalOut / totalIn : 0;
         
         const lastPoint = periodPoints.reduce((latest, current) => {
             return new Date(current.date) > new Date(latest.date) ? current : latest;
@@ -587,7 +591,7 @@ class HeatPumpSCOPCard extends HTMLElement {
                             <div class="info-value">${stat.count}</div>
                         </div>
                         <div class="info-item">
-                            <div class="info-label">Average SCOP</div>
+                            <div class="info-label" title="Total heat out / total electricity in">SCOP</div>
                             <div class="info-value">${stat.avgScop.toFixed(2)}</div>
                         </div>
                         <div class="info-item">
@@ -853,6 +857,7 @@ class HeatPumpSCOPCardEditor extends HTMLElement {
       cop_threshold_lower: 1.0,
       cop_threshold_upper: 6.0,
       energy_in_threshold: 0.1,
+      trend_weighting: 'none',
       ...config
     };
     this.render();
@@ -1034,6 +1039,17 @@ class HeatPumpSCOPCardEditor extends HTMLElement {
             <div class="helper-text">Which SCOP value to display on the chart</div>
           </div>
         </div>
+
+        <div class="config-row">
+          <div class="config-label">Trend Line Weighting</div>
+          <div class="config-input">
+            <select class="trend-weighting-config" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color);">
+              <option value="none" ${config.trend_weighting !== 'energy' ? 'selected' : ''}>None (each day equal)</option>
+              <option value="energy" ${config.trend_weighting === 'energy' ? 'selected' : ''}>By energy in</option>
+            </select>
+            <div class="helper-text">Weight each day's point in the trend fit by its electricity use</div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -1046,6 +1062,13 @@ class HeatPumpSCOPCardEditor extends HTMLElement {
     if (scopTypeConfig) {
       scopTypeConfig.addEventListener('change', (e) => {
         this._valueChanged({ target: { getAttribute: () => 'scop_type', value: e.target.value } });
+      });
+    }
+
+    const trendWeightingConfig = this.querySelector('.trend-weighting-config');
+    if (trendWeightingConfig) {
+      trendWeightingConfig.addEventListener('change', (e) => {
+        this._valueChanged({ target: { getAttribute: () => 'trend_weighting', value: e.target.value } });
       });
     }
   }

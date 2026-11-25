@@ -61,8 +61,15 @@ color_periods:
 | `cop_threshold_lower` | `1` | Drop days with SCOP at or below this |
 | `cop_threshold_upper` | `6` | Drop days with SCOP above this |
 | `energy_in_threshold` | `0.1` | Drop days with energy in (kWh) at or below this |
+| `trend_weighting` | `none` | `none`: each day counts equally in the trend fit. `energy`: weight each day by its energy in, so high-use days shape the curve more |
 | `width` / `height` | `700` / `400` | Chart size in pixels |
 | `color_periods` | none | Periods with their own colour gradient and trend line. Each has `name`, `endDate` (`YYYY-MM-DD` or `now`), optional `setpoint`, `startColor`, `endColor` |
 | `entry_id` | auto | Heat Pump Monitor config entry to read, if you have more than one |
 
 Days are also dropped when the inside temperature isn't above the outside temperature.
+
+## How the numbers are calculated
+
+- **Daily SCOP** (from the integration): total heat out ÷ total electricity in for the day.
+- **Period SCOP** (stats panel): total heat out ÷ total electricity in across all plotted days in the period, i.e. a true seasonal SCOP, not a mean of daily values.
+- **Trend line**: least-squares quadratic fit of daily SCOP against mean outside temperature, per period, optionally weighted by energy in (`trend_weighting`).
