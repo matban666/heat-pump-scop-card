@@ -15,7 +15,8 @@ class HeatPumpSCOPCard extends HTMLElement {
       width: config.width || 700,
       height: config.height || 400,
       scop_type: config.scop_type || 'ch',
-      cop_threshold: config.cop_threshold ?? 1.0,
+      cop_threshold_lower: config.cop_threshold_lower ?? 1.0,
+      cop_threshold_upper: config.cop_threshold_upper ?? 6.0,
       energy_in_threshold: config.energy_in_threshold ?? 0.1,
       color_periods: config.color_periods || null,
     };
@@ -67,7 +68,8 @@ class HeatPumpSCOPCard extends HTMLElement {
       const data = [];
       const passes = (p) =>
         p.temp_delta > 0 &&
-        p.scop > this.config.cop_threshold &&
+        p.scop > this.config.cop_threshold_lower &&
+        p.scop <= this.config.cop_threshold_upper &&
         p.energy_in > this.config.energy_in_threshold;
 
       Object.keys(byDate).sort().forEach((date) => {
@@ -848,7 +850,8 @@ class HeatPumpSCOPCardEditor extends HTMLElement {
       width: 700,
       height: 400,
       scop_type: 'ch',
-      cop_threshold: 1.0,
+      cop_threshold_lower: 1.0,
+      cop_threshold_upper: 6.0,
       energy_in_threshold: 0.1,
       ...config
     };
@@ -981,15 +984,28 @@ class HeatPumpSCOPCardEditor extends HTMLElement {
         </div>
 
         <div class="config-row">
-          <div class="config-label">COP Threshold</div>
+          <div class="config-label">Lower COP Threshold</div>
           <div class="config-input">
             <ha-textfield
               type="number"
-              value="${config.cop_threshold}"
-              configValue="cop_threshold"
+              value="${config.cop_threshold_lower}"
+              configValue="cop_threshold_lower"
               step="0.1"
             ></ha-textfield>
-            <div class="helper-text">Filter out daily COP values below this threshold.</div>
+            <div class="helper-text">Filter out daily COP values at or below this threshold.</div>
+          </div>
+        </div>
+
+        <div class="config-row">
+          <div class="config-label">Upper COP Threshold</div>
+          <div class="config-input">
+            <ha-textfield
+              type="number"
+              value="${config.cop_threshold_upper}"
+              configValue="cop_threshold_upper"
+              step="0.1"
+            ></ha-textfield>
+            <div class="helper-text">Filter out daily COP values above this threshold.</div>
           </div>
         </div>
         
@@ -1047,7 +1063,7 @@ class HeatPumpSCOPCardEditor extends HTMLElement {
     }
 
     // Convert numeric fields
-    if (['days', 'setpoint', 'width', 'height', 'cop_threshold', 'energy_in_threshold'].includes(configValue)) {
+    if (['days', 'setpoint', 'width', 'height', 'cop_threshold_lower', 'cop_threshold_upper', 'energy_in_threshold'].includes(configValue)) {
       value = parseFloat(value);
     }
 

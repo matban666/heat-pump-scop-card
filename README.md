@@ -36,7 +36,8 @@ title: SCOP
 days: 365
 scop_type: ch
 setpoint: 22
-cop_threshold: 1
+cop_threshold_lower: 1
+cop_threshold_upper: 6
 energy_in_threshold: 0.1
 color_periods:
   - name: 9kW
@@ -57,7 +58,8 @@ color_periods:
 | `days` | `365` | Days of history to plot |
 | `scop_type` | `ch` | `ch`, `dhw`, `combined` (CH + DHW energy) or `both` (CH and DHW as separate points) |
 | `setpoint` | `21` | Indoor setpoint shown in stats when a period doesn't set its own |
-| `cop_threshold` | `1` | Drop days with SCOP at or below this |
+| `cop_threshold_lower` | `1` | Drop days with SCOP at or below this |
+| `cop_threshold_upper` | `6` | Drop days with SCOP above this |
 | `energy_in_threshold` | `0.1` | Drop days with energy in (kWh) at or below this |
 | `width` / `height` | `700` / `400` | Chart size in pixels |
 | `color_periods` | none | Periods with their own colour gradient and trend line. Each has `name`, `endDate` (`YYYY-MM-DD` or `now`), optional `setpoint`, `startColor`, `endColor` |
